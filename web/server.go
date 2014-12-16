@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"path"
 	"strconv"
 	"time"
 )
@@ -35,6 +36,7 @@ func Serve(port int, templatesPath string, staticsPath string, store Storage) er
 	handler := &httphandler{tmpl: tmpl, store: store}
 
 	mux := http.NewServeMux()
+	mux.Handle("/favicon.ico", http.FileServer(http.Dir(path.Join(staticsPath, "img/"))))
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticsPath))))
 	mux.Handle("/", handler)
 
