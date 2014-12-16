@@ -24,7 +24,7 @@ func main() {
 	var staticsDir *string = flag.String("statics-dir", path.Join(rootDir, "static"), "Static files directory path")
 	flag.Parse()
 
-	s := store.NewMemoryStore(10 * time.Second)
+	s := store.NewMemoryStore(1 * time.Minute)
 	defer s.Close()
 	log.Fatal(web.Serve(*httpPort, *templatesDir, *staticsDir, s))
 }

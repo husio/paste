@@ -3,7 +3,6 @@ package store
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -24,6 +23,7 @@ type MemoryStore struct {
 type storeitem struct {
 	data      []byte
 	validTill *time.Time
+	created   time.Time
 }
 
 func NewMemoryStore(expTimeTick time.Duration) *MemoryStore {
@@ -52,18 +52,19 @@ func (s *MemoryStore) Create(key string, obj interface{}, expireAfter time.Durat
 	if _, ok := s.items[key]; ok {
 		return ErrExist
 	}
+
+	now := time.Now()
+	var exp *time.Time = nil
+
 	if expireAfter != 0 {
-		if err := s.expireAt(key, expireAfter); err != nil {
+		expTime := now.Add(expireAfter)
+		exp = &expTime
+
+		if err := s.expireAt(key, expTime); err != nil {
 			return err
 		}
 	}
-
-	var exp *time.Time = nil
-	if expireAfter != 0 {
-		expTime := time.Now().Add(expireAfter)
-		exp = &expTime
-	}
-	s.items[key] = &storeitem{data: data, validTill: exp}
+	s.items[key] = &storeitem{data: data, validTill: exp, created: now}
 	return nil
 }
 
@@ -71,7 +72,6 @@ func (s *MemoryStore) Get(key string, obj interface{}) error {
 	s.Lock()
 	item, ok := s.items[key]
 	s.Unlock()
-
 	if !ok || (item.validTill != nil && item.validTill.Before(time.Now())) {
 		return ErrNotFound
 	}
@@ -94,13 +94,13 @@ func (s *MemoryStore) cleanupExpired() {
 	ticker := time.NewTicker(s.expTimeTick)
 	defer ticker.Stop()
 
-	tick := s.expTimeTick.Nanoseconds()
+	tick := int64(s.expTimeTick.Seconds())
 	for {
 		select {
 		case <-s.stop:
 			return
 		case now := <-ticker.C:
-			t := now.UnixNano() / tick * tick
+			t := now.Unix() / tick * tick
 			s.Lock()
 			if keys, ok := s.timeouts[t]; ok {
 				for _, key := range keys {
@@ -113,14 +113,9 @@ func (s *MemoryStore) cleanupExpired() {
 	}
 }
 
-func (s *MemoryStore) expireAt(key string, exp time.Duration) error {
-	if exp <= s.expTimeTick {
-		return fmt.Errorf("expiration period too short: %s", exp)
-	}
-
-	tick := s.expTimeTick.Nanoseconds()
-	now := time.Now().UnixNano()
-	t := (now + exp.Nanoseconds()) / tick * tick
+func (s *MemoryStore) expireAt(key string, exp time.Time) error {
+	tick := int64(s.expTimeTick.Seconds())
+	t := exp.Unix() / tick * tick
 	keys, ok := s.timeouts[t]
 	if !ok {
 		keys = make([]string, 0, 12)

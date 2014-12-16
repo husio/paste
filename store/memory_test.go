@@ -52,15 +52,15 @@ func TestMemoryStoreGetSetDel(t *testing.T) {
 }
 
 func TestMemoryStoreExpiration(t *testing.T) {
-	m := NewMemoryStore(time.Millisecond * 15)
+	m := NewMemoryStore(time.Second * 1)
 	defer m.Close()
 
 	orange := &item{Name: "orange", Value: 51}
-	if err := m.Create("orange", orange, time.Millisecond*20); err != nil {
+	if err := m.Create("orange", orange, time.Second*1); err != nil {
 		t.Errorf("cannot save orange: %s", err)
 	}
 	apple := &item{Name: "apple", Value: 61}
-	if err := m.Create("apple", apple, time.Millisecond*20); err != nil {
+	if err := m.Create("apple", apple, time.Second*1); err != nil {
 		t.Errorf("cannot save apple: %s", err)
 	}
 
@@ -71,7 +71,7 @@ func TestMemoryStoreExpiration(t *testing.T) {
 		t.Errorf("cannot get apple: %s", err)
 	}
 
-	time.Sleep(time.Millisecond * 20)
+	time.Sleep(time.Second * 1)
 
 	if err := m.Get("orange", &orange); err != ErrNotFound {
 		t.Errorf("orange has not expired: %s", err)

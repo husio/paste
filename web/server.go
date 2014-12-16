@@ -17,7 +17,9 @@ type Storage interface {
 }
 
 type Paste struct {
-	Content string
+	Content     string
+	ContentType string
+	ValidTill   *time.Time
 }
 
 type httphandler struct {
@@ -73,18 +75,23 @@ func (h *httphandler) handlePasteCreate(w http.ResponseWriter, r *http.Request) 
 	}
 	key := genKey(5)
 	paste := &Paste{
-		Content: r.FormValue("content"),
+		Content:     r.FormValue("content"),
+		ContentType: "plain/text",
 	}
 
-	expireAfter, err := strconv.Atoi(r.PostFormValue("expire-after"))
-	if err != nil {
+	var expAfter time.Duration
+	if expireAfter, err := strconv.Atoi(r.PostFormValue("expire-after")); err != nil {
 		http.Error(w, "Invalid \"expire-after\" value", 400)
 		return
+	} else {
+		expAfter = time.Duration(expireAfter) * time.Second
+		validTill := time.Now().Add(expAfter)
+		paste.ValidTill = &validTill
 	}
 
 	// retry several times before giving up
 	for i := 0; ; i++ {
-		if err := h.store.Create(key, paste, time.Duration(expireAfter)*time.Second); err == nil {
+		if err := h.store.Create(key, paste, expAfter); err == nil {
 			break
 		} else if i > 5 {
 			http.Error(w, err.Error(), 500)
@@ -101,5 +108,16 @@ func (h *httphandler) handlePasteGet(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	if paste.ValidTill != nil {
+		validDelta := paste.ValidTill.Sub(time.Now())
+		if validDelta > 0 {
+			cacheControl := fmt.Sprintf("public, max-age=%d", int(validDelta.Seconds()))
+			w.Header().Set("Cache-Control", cacheControl)
+			w.Header().Set("Etag", fmt.Sprintf("%d", paste.ValidTill.Unix()))
+		}
+	}
+
+	w.Header().Set("ContentType", paste.ContentType)
 	fmt.Fprint(w, paste.Content)
 }
