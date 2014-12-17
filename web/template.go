@@ -13,6 +13,7 @@ body, html  { margin: 5px; }
 textarea    { width: 100%; padding: 10px; box-sizing: border-box; resize: vertical; }
 label       { margin-right: 30px; }
 .pull-right { float: right; }
+.center     { text-align: center; margin: auto; }
     </style>
 </head>
 <body>
@@ -70,9 +71,14 @@ label       { margin-right: 30px; }
 {{define "paste-host"}}
 {{template "header" .}}
 <h1>
-    Paste host
-    <a href="/{{.PasteKey}}">{{.PasteKey}}</a>
+	You are hosting paste
+	<small>
+		<a href="/{{.PasteKey}}">{{.PasteKey}}</a>
+	</small>
 </h1>
+<div>
+	Closing browser tab will delete the paste.
+</div>
 <h3>Connected clients</h3>
 <ul>
 {{end}}
@@ -80,7 +86,7 @@ label       { margin-right: 30px; }
 
 {{define "paste-client"}}
 <li>
-    Client connected: {{.Client.Host}}
+	{{.Client.Address}} - {{.Client.UserAgent}}
 </li>
 {{end}}
 
@@ -97,7 +103,12 @@ label       { margin-right: 30px; }
 {{define "paste-one-use-created"}}
 {{template "header" .}}
     <h1>Paste created</h1>
-    <a href="{{.PasteUrl}}">{{.PasteUrl}}</a>
+	<h2 class="center">
+		<a href="/{{.PasteKey}}">{{.PasteUrl}}</a>
+	</h2>
+	<p>
+		Once the following link will be accessed, paste will be deleted and no longer available.
+	</p>
 {{template "footer" .}}
 {{end}}
 `

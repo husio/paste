@@ -119,7 +119,7 @@ func (h *httphandler) handlePasteCreate(w http.ResponseWriter, r *http.Request) 
 	if oneUseOnly {
 		ctx := dict{
 			"PasteKey": key,
-			"PasteUrl": fmt.Sprintf("%s%s", r.URL.Host, key),
+			"PasteUrl": template.HTMLAttr(fmt.Sprintf("%s/%s", r.Host, key)),
 		}
 		h.render(w, "paste-one-use-created", ctx)
 	} else {
@@ -159,7 +159,7 @@ func (h *httphandler) handlePasteGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if paste.RequireHost != "" {
-		h.pubsub.Publish(key, &pastereader{Host: r.Host})
+		h.pubsub.Publish(key, &pastereader{Address: r.RemoteAddr, UserAgent: r.UserAgent()})
 	}
 
 	w.Header().Set("ContentType", paste.ContentType)
@@ -193,5 +193,6 @@ func (h *httphandler) handleHostPaste(w http.ResponseWriter, r *http.Request, ke
 }
 
 type pastereader struct {
-	Host string
+	Address   string
+	UserAgent string
 }
