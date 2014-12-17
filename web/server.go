@@ -116,10 +116,10 @@ func (h *httphandler) handlePasteCreate(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if oneUseOnly {
+	if oneUseOnly && paste.RequireHost == "" {
 		ctx := dict{
 			"PasteKey": key,
-			"PasteUrl": template.HTMLAttr(fmt.Sprintf("%s/%s", r.Host, key)),
+			"PasteUrl": fmt.Sprintf("%s/%s", r.Host, key),
 		}
 		h.render(w, "paste-one-use-created", ctx)
 	} else {
@@ -135,10 +135,6 @@ func (h *httphandler) handlePasteGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if paste.OneUseOnly {
-		h.store.Del(key)
-	}
-
 	if cookie, err := r.Cookie(key); err == nil && cookie.Value == paste.RequireHost {
 		http.SetCookie(w, &http.Cookie{
 			Name:    key,
@@ -147,6 +143,10 @@ func (h *httphandler) handlePasteGet(w http.ResponseWriter, r *http.Request) {
 		})
 		h.handleHostPaste(w, r, key, paste)
 		return
+	}
+
+	if paste.OneUseOnly {
+		h.store.Del(key)
 	}
 
 	if paste.ValidTill != nil && paste.RequireHost == "" {
@@ -160,6 +160,10 @@ func (h *httphandler) handlePasteGet(w http.ResponseWriter, r *http.Request) {
 
 	if paste.RequireHost != "" {
 		h.pubsub.Publish(key, &pastereader{Address: r.RemoteAddr, UserAgent: r.UserAgent()})
+		// because no one else can see this paste anyway, notify the host as well
+		if paste.OneUseOnly {
+			h.pubsub.UnsubscribeAll(key)
+		}
 	}
 
 	w.Header().Set("ContentType", paste.ContentType)

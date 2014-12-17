@@ -94,7 +94,7 @@ label       { margin-right: 30px; }
 {{define "paste-client-end"}}
 </ul>
 <div>
-    No more clients can connect.
+    Paste deleted.
 </div>
 {{template "footer" .}}
 {{end}}
