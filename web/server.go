@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"path"
 	"strconv"
 	"time"
 )
@@ -23,28 +22,26 @@ type Paste struct {
 	ContentType string
 	ValidTill   *time.Time
 	RequireHost string
+	OneUseOnly  bool
 }
 
 type httphandler struct {
-	tmpl   *template.Template
 	store  Storage
 	pubsub *PubSub
 }
 
-func Serve(port int, templatesPath string, staticsPath string, store Storage) error {
-	tmpl, err := template.ParseGlob(templatesPath + "/*.html")
-	if err != nil {
-		return err
-	}
+var tmpl *template.Template
+
+func init() {
+	tmpl = template.Must(template.New("").Parse(templates))
+}
+
+func Serve(port int, store Storage) error {
 	pubsub := NewPubSub(32)
-	handler := &httphandler{tmpl: tmpl, store: store, pubsub: pubsub}
+	handler := &httphandler{store: store, pubsub: pubsub}
 
-	mux := http.NewServeMux()
-	mux.Handle("/favicon.ico", http.FileServer(http.Dir(path.Join(staticsPath, "img/"))))
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticsPath))))
-	mux.Handle("/", handler)
-
-	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
+	http.Handle("/", handler)
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func (h *httphandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +59,7 @@ func (h *httphandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httphandler) render(w http.ResponseWriter, templateName string, context dict) {
-	if err := h.tmpl.ExecuteTemplate(w, templateName, context); err != nil {
+	if err := tmpl.ExecuteTemplate(w, templateName, context); err != nil {
 		log.Println(err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -84,7 +81,11 @@ func (h *httphandler) handlePasteCreate(w http.ResponseWriter, r *http.Request) 
 		Content:     r.FormValue("content"),
 		ContentType: "plain/text",
 		RequireHost: "",
+		OneUseOnly:  false,
 	}
+
+	_, oneUseOnly := r.Form["one-use-only"]
+	paste.OneUseOnly = oneUseOnly
 
 	if _, ok := r.Form["host-required"]; ok {
 		paste.RequireHost = genKey(12)
@@ -115,7 +116,15 @@ func (h *httphandler) handlePasteCreate(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("/%s", key), 302)
+	if oneUseOnly {
+		ctx := dict{
+			"PasteKey": key,
+			"PasteUrl": fmt.Sprintf("%s%s", r.URL.Host, key),
+		}
+		h.render(w, "paste-one-use-created", ctx)
+	} else {
+		http.Redirect(w, r, fmt.Sprintf("/%s", key), 302)
+	}
 }
 
 func (h *httphandler) handlePasteGet(w http.ResponseWriter, r *http.Request) {
@@ -124,6 +133,10 @@ func (h *httphandler) handlePasteGet(w http.ResponseWriter, r *http.Request) {
 	if err := h.store.Get(key, &paste); err != nil {
 		http.NotFound(w, r)
 		return
+	}
+
+	if paste.OneUseOnly {
+		h.store.Del(key)
 	}
 
 	if cookie, err := r.Cookie(key); err == nil && cookie.Value == paste.RequireHost {
@@ -166,7 +179,11 @@ func (h *httphandler) handleHostPaste(w http.ResponseWriter, r *http.Request, ke
 	flush()
 	for {
 		select {
-		case cli := <-sub.C:
+		case cli, ok := <-sub.C:
+			if !ok {
+				h.render(w, "paste-client-end", nil)
+				return
+			}
 			h.render(w, "paste-client", dict{"Client": cli})
 			flush()
 		case <-connClosed:
