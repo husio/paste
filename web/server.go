@@ -26,6 +26,7 @@ type Paste struct {
 }
 
 type httphandler struct {
+	keyLen int
 	store  Storage
 	pubsub *PubSub
 }
@@ -36,9 +37,9 @@ func init() {
 	tmpl = template.Must(template.New("").Parse(templates))
 }
 
-func Serve(port int, store Storage) error {
+func Serve(port int, store Storage, keyLen int) error {
 	pubsub := NewPubSub(32)
-	handler := &httphandler{store: store, pubsub: pubsub}
+	handler := &httphandler{store: store, pubsub: pubsub, keyLen: keyLen}
 
 	http.Handle("/", handler)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
@@ -76,7 +77,7 @@ func (h *httphandler) handlePasteCreate(w http.ResponseWriter, r *http.Request) 
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), 400)
 	}
-	key := genKey(5)
+	key := genKey(h.keyLen)
 	paste := &Paste{
 		Content:     r.FormValue("content"),
 		ContentType: "plain/text",
