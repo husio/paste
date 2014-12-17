@@ -2,11 +2,16 @@ package web
 
 import (
 	"math/rand"
+	"time"
 )
 
 const (
 	validChars = "abcdefghijklmnoprstuwxyzABCDEFGHIJKLMNOPRSTUWXYZ0123456789"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func genKey(length int) string {
 	chars := make([]byte, 0, length)

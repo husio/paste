@@ -3,6 +3,7 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <link rel="stylesheet" href="/static/css/main.css" type="text/css">
     <title>{{.PageTitle}}</title>
 </head>
 <body>
@@ -18,11 +19,11 @@
 
 {{define "main-page"}}
 {{template "header" .}}
-<form action="." method="POST" class="pure-form pure-form-stacked">
-    <textarea name="content" class="pure-input-1" placeholder="Paste content" required></textarea>
+<form action="." method="POST">
+    <textarea name="content" id="content" placeholder="Paste your content here" required></textarea>
 
     <label for="host-required">
-        <input id="host-required" type="checkbox" name="host-required"> Delete after closing page
+        <input id="host-required" type="checkbox" name="host-required"> Host required
     </label>
     <label for="expire-after">
         Expire after
@@ -35,7 +36,26 @@
             <option value="86400">1 day</option>
         <select>
     </label>
-    <button type="submit" class="pure-button pure-button-primary">Create</button>
+    <button type="submit" class="pull-right">Create</button>
 </form>
+<script src="/static/js/paste.js" type="text/javascript"></script>
 {{template "footer" .}}
+{{end}}
+
+
+{{define "paste-host"}}
+{{template "header" .}}
+<h1>
+    Paste host
+    <a href="/{{.PasteKey}}">{{.PasteKey}}</a>
+</h1>
+<h3>Connected clients</h3>
+<ul>
+{{end}}
+
+
+{{define "paste-client"}}
+<li>
+    Client connected: {{.Client.Host}}
+</li>
 {{end}}
