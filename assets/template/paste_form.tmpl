@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset='utf-8'>
+        <title></title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/static/css/pure.css">
+    </head>
+    <body class="pure-g">
+        <form action="/" method="POST" class="pure-u-1-1 pure-form">
+            <textarea name="content" id="paste-content" placeholder="paste content" required class="pure-u-1-1"></textarea>
+            <div class="pure-g" id="paste-options">
+                <div class="pure-u-3-4">
+                    <label for="expire-in">
+                        Expire
+                        <select name="expire-in" id="expire-in">
+                            <option value="0" default>never</option>
+                            <option value="300">after 5 minutes</option>
+                            <option value="3600">after 1 hour</option>
+                            <option value="86400">after 1 day</option>
+                        </select>
+                    </label>
+                </div>
+                <button type="submit" class="pure-button pure-button-primary pure-u-1-4">Submit</button>
+            </div>
+        </form>
+    </body>
+    <script>
+(function () {
+    window.addEventListener('load', function () {
+        function adjustHeight() {
+            var h = window.innerHeight || document.documentElement.clientHeight;
+            document.getElementById("paste-content").style.height = h - document.getElementById("paste-options").clientHeight - 4 + 'px';
+        }
+        adjustHeight();
+        window.addEventListener('resize', adjustHeight, false);
+    }, false);
+}());
+    </script>
+</html>

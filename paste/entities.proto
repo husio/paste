@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package paste;
+
+
+message Paste {
+    string ID = 1;
+    bytes Content = 2;
+    // paste creation time in UNIX nanoseconds
+    int64 CreatedAt = 3;
+    // expiration time (if > 0) in nanoseconds, counting from CreatedAt
+    int64 ExpireIn = 4;
+    // if provided, paste is protected by password
+    string Password = 5;
+}
+
+message User {
+    string ID = 1;
+    string Name = 2;
+    string Email = 3;
+    string Picture = 4;
+    int64 CreatedAt = 5;
+}
