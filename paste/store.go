@@ -14,27 +14,10 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-var db *leveldb.DB
-
-func OpenDB(path string) error {
-	conn, err := leveldb.OpenFile(path, nil)
-	if err != nil {
-		return fmt.Errorf("cannot open database: %s", err)
-	}
-	db = conn
-	return nil
-}
-
-func CloseDB() {
-	if err := db.Close(); err != nil {
-		log.Printf("cannot close database: %s", err)
-	}
-}
-
 var ErrNotFound = errors.New("not found")
 
 // PasteByID return paste with given id or ErrNotFound if not exist.
-func PasteByID(id string) (*Paste, error) {
+func PasteByID(db *leveldb.DB, id string) (*Paste, error) {
 	b, err := db.Get(key("paste:%s:id", id), nil)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
@@ -53,7 +36,7 @@ func PasteByID(id string) (*Paste, error) {
 		if paste.CreatedAt+paste.ExpireIn < now {
 			// paste is expired, delete it manually, but ignore errors - they
 			// are not relevant
-			if err := DeletePaste(id); err != nil {
+			if err := DeletePaste(db, id); err != nil {
 				log.Printf("cannot delete expired paste: %s", err)
 			}
 			return nil, ErrNotFound
@@ -63,7 +46,7 @@ func PasteByID(id string) (*Paste, error) {
 	return &paste, nil
 }
 
-func StorePaste(p *Paste) error {
+func StorePaste(db *leveldb.DB, p *Paste) error {
 	if p.ID == "" {
 		p.ID = NewKey(16)
 	}
@@ -87,7 +70,7 @@ func StorePaste(p *Paste) error {
 	return nil
 }
 
-func DeletePaste(id string) error {
+func DeletePaste(db *leveldb.DB, id string) error {
 	if err := db.Delete(key("paste:%s:id", id), nil); err != nil {
 		return fmt.Errorf("database error: %s", err)
 	}
@@ -100,7 +83,7 @@ func DeletePaste(id string) error {
 // Deleted keys are
 // * paste:<paste-id>:id
 // * paste:<expire-at>:expire
-func DeleteExpiredPastes() error {
+func DeleteExpiredPastes(db *leveldb.DB) error {
 	now := time.Now()
 	iter := db.NewIterator(&util.Range{
 		Start: []byte("paste:0:expire"),

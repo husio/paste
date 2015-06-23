@@ -12,12 +12,15 @@ message Paste {
     int64 ExpireIn = 4;
     // if provided, paste is protected by password
     string Password = 5;
+    // if profided, links to Paste that was used to create this one
+    string ParentID = 6;
 }
 
 message User {
     string ID = 1;
     string Name = 2;
     string Email = 3;
+    // URL to user picture (avatar)
     string Picture = 4;
     int64 CreatedAt = 5;
 }

@@ -28,6 +28,8 @@ type Paste struct {
 	ExpireIn int64 `protobuf:"varint,4,opt" json:"ExpireIn,omitempty"`
 	// if provided, paste is protected by password
 	Password string `protobuf:"bytes,5,opt" json:"Password,omitempty"`
+	// if profided, links to Paste that was used to create this one
+	ParentID string `protobuf:"bytes,6,opt" json:"ParentID,omitempty"`
 }
 
 func (m *Paste) Reset()         { *m = Paste{} }
@@ -35,9 +37,10 @@ func (m *Paste) String() string { return proto.CompactTextString(m) }
 func (*Paste) ProtoMessage()    {}
 
 type User struct {
-	ID        string `protobuf:"bytes,1,opt" json:"ID,omitempty"`
-	Name      string `protobuf:"bytes,2,opt" json:"Name,omitempty"`
-	Email     string `protobuf:"bytes,3,opt" json:"Email,omitempty"`
+	ID    string `protobuf:"bytes,1,opt" json:"ID,omitempty"`
+	Name  string `protobuf:"bytes,2,opt" json:"Name,omitempty"`
+	Email string `protobuf:"bytes,3,opt" json:"Email,omitempty"`
+	// URL to user picture (avatar)
 	Picture   string `protobuf:"bytes,4,opt" json:"Picture,omitempty"`
 	CreatedAt int64  `protobuf:"varint,5,opt" json:"CreatedAt,omitempty"`
 }

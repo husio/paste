@@ -5,16 +5,14 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
-func handleHello(w http.ResponseWriter, r *http.Request) {
-	render(w, "paste_form", http.StatusOK, nil)
+func handleHello(ctx *Context, w http.ResponseWriter, r *http.Request) {
+	render(w, "paste_form", nil)
 }
 
-func handleGetPaste(w http.ResponseWriter, r *http.Request) {
-	paste, err := PasteByID(mux.Vars(r)["pasteID"])
+func handleGetPaste(ctx *Context, w http.ResponseWriter, r *http.Request) {
+	paste, err := PasteByID(ctx.app.db, ctx.params["pasteID"])
 	if err != nil {
 		if err == ErrNotFound {
 			renderErr(w, http.StatusNotFound)
@@ -27,7 +25,7 @@ func handleGetPaste(w http.ResponseWriter, r *http.Request) {
 	w.Write(paste.Content)
 }
 
-func handleCreatePaste(w http.ResponseWriter, r *http.Request) {
+func handleCreatePaste(ctx *Context, w http.ResponseWriter, r *http.Request) {
 	var expireIn int64
 	if raw := r.PostFormValue("expire-in"); raw == "" {
 		expireIn = 0
@@ -44,7 +42,7 @@ func handleCreatePaste(w http.ResponseWriter, r *http.Request) {
 		Content:  []byte(r.PostFormValue("content")),
 		ExpireIn: expireIn,
 	}
-	if err := StorePaste(&paste); err != nil {
+	if err := StorePaste(ctx.app.db, &paste); err != nil {
 		log.Printf("cannot store paste: %s", err)
 		renderErr(w, http.StatusInternalServerError)
 		return
@@ -52,8 +50,8 @@ func handleCreatePaste(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/"+paste.ID, http.StatusFound)
 }
 
-func handleDeletePaste(w http.ResponseWriter, r *http.Request) {
-	if err := DeletePaste(mux.Vars(r)["pasteID"]); err != nil {
+func handleDeletePaste(ctx *Context, w http.ResponseWriter, r *http.Request) {
+	if err := DeletePaste(ctx.app.db, ctx.params["pasteID"]); err != nil {
 		log.Printf("cannot delete paste: %s", err)
 		renderErr(w, http.StatusInternalServerError)
 		return
@@ -61,14 +59,30 @@ func handleDeletePaste(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func handleLoginSelect(w http.ResponseWriter, r *http.Request) {
+func handleLoginSelect(ctx *Context, w http.ResponseWriter, r *http.Request) {
+	provider := r.URL.Query().Get("provider")
+	if provider != "" {
+		if auth, ok := ctx.app.oauth[provider]; ok {
+			url := auth.AuthCodeURL(NewKey(12))
+			http.Redirect(w, r, url, http.StatusFound)
+			return
+		}
+	}
+
+	providers := make([]string, 0)
+	for name := range ctx.app.oauth {
+		providers = append(providers, name)
+	}
+	context := map[string]interface{}{
+		"Providers": providers,
+	}
+	render(w, "login", context)
+}
+
+func handleLogout(ctx *Context, w http.ResponseWriter, r *http.Request) {
 	panic("not implemented")
 }
 
-func handleLogout(w http.ResponseWriter, r *http.Request) {
-	panic("not implemented")
-}
-
-func handleLoginGoogleOauth2(w http.ResponseWriter, r *http.Request) {
+func handleLoginGoogleOauth2(ctx *Context, w http.ResponseWriter, r *http.Request) {
 	panic("not implemented")
 }

@@ -27,14 +27,13 @@ func init() {
 	}
 }
 
-func render(w http.ResponseWriter, name string, code int, context interface{}) {
+func render(w http.ResponseWriter, name string, context interface{}) {
 	t, ok := templates[name]
 	if !ok {
 		log.Printf("template does not exist: %s", name)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(code)
 	if err := t.Execute(w, context); err != nil {
 		log.Printf("cannot execute %q template: %s", name, err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -46,5 +45,6 @@ func renderErr(w http.ResponseWriter, code int) {
 		"Text": http.StatusText(code),
 		"Code": code,
 	}
-	render(w, "error", code, context)
+	w.WriteHeader(code)
+	render(w, "error", context)
 }
