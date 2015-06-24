@@ -13,7 +13,7 @@ import (
 
 type App struct {
 	cache  *memoryCache
-	oauth  map[string]oauth2.Config
+	oauth  map[string]*oauth2.Config
 	db     *leveldb.DB
 	routes []route
 }
@@ -30,22 +30,26 @@ type handler func(*Context, http.ResponseWriter, *http.Request)
 func NewApp() *App {
 	app := &App{
 		cache: newMemoryCache(),
-		oauth: make(map[string]oauth2.Config),
+		oauth: make(map[string]*oauth2.Config),
 	}
 
 	app.handle("GET", "/", handleHello)
 	app.handle("POST", "/", handleCreatePaste)
 	app.handle("GET", "/login", handleLoginSelect)
-	app.handle("GET", "/login/google-oatuh2", handleLoginGoogleOauth2)
+	app.handle("GET", "/login/google", handleLoginGoogle)
 	app.handle("GET", "/logout", handleLogout)
 	app.handle("GET", "/:pasteID", handleGetPaste)
 	app.handle("DELETE", "/:pasteID", handleDeletePaste)
+
+	// TODO(husio) debug
+	app.handle("GET", "/_/db", handleInspectDB)
+	app.handle("GET", "/_/cache", handleInspectCache)
 
 	return app
 }
 
 func (app *App) OauthCredentials(provider string, conf oauth2.Config) {
-	app.oauth[provider] = conf
+	app.oauth[provider] = &conf
 }
 
 func (app *App) ResetCache() {
@@ -105,11 +109,6 @@ func (app *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 }
 
-type Context struct {
-	params map[string]string
-	app    *App
-}
-
 func (app *App) handle(method string, path string, h handler) {
 	params := make([]string, 0)
 	chunks := strings.Split(path, "/")
@@ -126,4 +125,39 @@ func (app *App) handle(method string, path string, h handler) {
 		params:  params,
 		rx:      rx,
 	})
+}
+
+type Context struct {
+	params map[string]string
+	app    *App
+}
+
+// CurrentUserID return ID of user authenticated within given HTTP request.
+// Returned ID is not validated for existance in database.
+func (ctx *Context) CurrentUserID(r *http.Request) (string, bool) {
+	sessionID, err := r.Cookie(sessionCookieName)
+	if err != nil || sessionID.Value == "" {
+		return "", false
+	}
+	userID, ok := ctx.app.cache.GetString("session:" + sessionID.Value)
+	if !ok {
+		return "", false
+	}
+	return userID, true
+}
+
+// CurrentUser return user authenticated within given HTTP request.
+func (ctx *Context) CurrentUser(r *http.Request) (*User, bool) {
+	userID, ok := ctx.CurrentUserID(r)
+	if !ok {
+		return nil, false
+	}
+	user, err := UserByID(ctx.app.db, userID)
+	if err != nil {
+		if err != ErrNotFound {
+			log.Printf("database error: %s", err)
+		}
+		return nil, false
+	}
+	return user, true
 }

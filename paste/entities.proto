@@ -22,5 +22,6 @@ message User {
     string Email = 3;
     // URL to user picture (avatar)
     string Picture = 4;
+    // user account creation time in UNIX nanoseconds
     int64 CreatedAt = 5;
 }

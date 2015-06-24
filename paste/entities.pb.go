@@ -41,8 +41,9 @@ type User struct {
 	Name  string `protobuf:"bytes,2,opt" json:"Name,omitempty"`
 	Email string `protobuf:"bytes,3,opt" json:"Email,omitempty"`
 	// URL to user picture (avatar)
-	Picture   string `protobuf:"bytes,4,opt" json:"Picture,omitempty"`
-	CreatedAt int64  `protobuf:"varint,5,opt" json:"CreatedAt,omitempty"`
+	Picture string `protobuf:"bytes,4,opt" json:"Picture,omitempty"`
+	// user account creation time in UNIX nanoseconds
+	CreatedAt int64 `protobuf:"varint,5,opt" json:"CreatedAt,omitempty"`
 }
 
 func (m *User) Reset()         { *m = User{} }

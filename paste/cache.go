@@ -33,6 +33,15 @@ func (c *memoryCache) Get(key string) (interface{}, bool) {
 	return value, ok
 }
 
+func (c *memoryCache) GetString(key string) (string, bool) {
+	val, ok := c.Get(key)
+	if !ok {
+		return "", false
+	}
+	s, ok := val.(string)
+	return s, ok
+}
+
 func (c *memoryCache) Delete(key string) {
 	c.Lock()
 	delete(c.mem, key)

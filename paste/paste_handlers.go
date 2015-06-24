@@ -8,7 +8,8 @@ import (
 )
 
 func handleHello(ctx *Context, w http.ResponseWriter, r *http.Request) {
-	render(w, "paste_form", nil)
+	user, _ := ctx.CurrentUser(r)
+	render(w, "paste_form", user)
 }
 
 func handleGetPaste(ctx *Context, w http.ResponseWriter, r *http.Request) {
@@ -47,6 +48,15 @@ func handleCreatePaste(ctx *Context, w http.ResponseWriter, r *http.Request) {
 		renderErr(w, http.StatusInternalServerError)
 		return
 	}
+
+	// if user is logged, bookmark created paste for him automatically.
+	if userID, ok := ctx.CurrentUserID(r); ok {
+		if err := BookmarkPaste(ctx.app.db, userID, paste.ID); err != nil {
+			// database error is not critical for paste creation
+			log.Printf("database error: %s", err)
+		}
+	}
+
 	http.Redirect(w, r, "/"+paste.ID, http.StatusFound)
 }
 
@@ -57,32 +67,4 @@ func handleDeletePaste(ctx *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func handleLoginSelect(ctx *Context, w http.ResponseWriter, r *http.Request) {
-	provider := r.URL.Query().Get("provider")
-	if provider != "" {
-		if auth, ok := ctx.app.oauth[provider]; ok {
-			url := auth.AuthCodeURL(NewKey(12))
-			http.Redirect(w, r, url, http.StatusFound)
-			return
-		}
-	}
-
-	providers := make([]string, 0)
-	for name := range ctx.app.oauth {
-		providers = append(providers, name)
-	}
-	context := map[string]interface{}{
-		"Providers": providers,
-	}
-	render(w, "login", context)
-}
-
-func handleLogout(ctx *Context, w http.ResponseWriter, r *http.Request) {
-	panic("not implemented")
-}
-
-func handleLoginGoogleOauth2(ctx *Context, w http.ResponseWriter, r *http.Request) {
-	panic("not implemented")
 }
