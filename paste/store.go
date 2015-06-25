@@ -1,6 +1,7 @@
 package paste
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base32"
 	"errors"
@@ -91,7 +92,11 @@ func DeleteExpiredPastes(db *leveldb.DB) error {
 	}, nil)
 	tx := &leveldb.Batch{}
 	for iter.Next() {
-		tx.Delete(iter.Key())
+		ikey := iter.Key()
+		if !bytes.HasPrefix(ikey, []byte("paste:")) || !bytes.HasSuffix(ikey, []byte(":expire")) {
+			break
+		}
+		tx.Delete(ikey)
 		tx.Delete(key("paste:%s", iter.Value()))
 	}
 	iter.Release()
@@ -204,13 +209,42 @@ func BookmarkPaste(db *leveldb.DB, userID, pasteID string) error {
 	return nil
 }
 
-// ListBookmarkedPastes return list of pastes that user with given ID has
-// bookmarked, that creation date is older than gieven time. Pastes are
-// ordered descending, sorted by bookmark creation time. Maximum 100 pastes are
-// returned.
-//
-// In case of pagination, to get next 100 pastes, use date of the oldest
-// returned previously paste to narrow listing result.
-func ListBookmarkedPastes(db *leveldb.DB, userID string, olderThan time.Time) ([]*Paste, error) {
-	return nil, errors.New("not implemented")
+// ListBookmarkedPastes return list of paste IDs that user with given ID has
+// bookmarked, that creation date is older than gieven time. Pastes are ordered
+// descending, sorted by bookmark creation time.
+func ListBookmarkedPasteIDs(db *leveldb.DB, userID string, olderThan time.Time, limit int) (ids []string, err error) {
+	ids = make([]string, 0, 100)
+	iter := db.NewIterator(&util.Range{
+		Start: key("user:%s:paste:%s", userID, olderThan.UnixNano()),
+	}, nil)
+
+	prefix := key("user:%s:paste:", userID)
+	for iter.Prev() && len(ids) < limit {
+		if !bytes.HasPrefix(iter.Key(), prefix) {
+			break
+		}
+		ids = append(ids, string(iter.Value()))
+	}
+	iter.Release()
+	if err := iter.Error(); err != nil {
+		return nil, fmt.Errorf("iter error: %s", err)
+	}
+	return ids, nil
+}
+
+// PastesFromIDs fetch all pastes with given IDs and return them.
+func PastesFromIDs(db *leveldb.DB, pasteIDs []string) ([]*Paste, error) {
+	pastes := make([]*Paste, len(pasteIDs))
+	for n, id := range pasteIDs {
+		raw, err := db.Get(key("paste:%s", id), nil)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get %q paste: %s", id, err)
+		}
+		var paste Paste
+		if err := proto.Unmarshal(raw, &paste); err != nil {
+			return nil, fmt.Errorf("cannot unmarshal %q paste: %s", id, err)
+		}
+		pastes[n] = &paste
+	}
+	return pastes, nil
 }

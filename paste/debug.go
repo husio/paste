@@ -66,7 +66,11 @@ func handleInspectDB(ctx *Context, w http.ResponseWriter, r *http.Request) {
 					"value": string(iter.Value()),
 				}
 			} else {
-				value = user
+				value = map[string]interface{}{
+					"key":  string(iter.Key()),
+					"type": "User",
+					"data": user,
+				}
 			}
 		case "paste":
 			var paste Paste
@@ -76,7 +80,11 @@ func handleInspectDB(ctx *Context, w http.ResponseWriter, r *http.Request) {
 					"value": string(iter.Value()),
 				}
 			} else {
-				value = paste
+				value = map[string]interface{}{
+					"key":  string(iter.Key()),
+					"type": "Paste",
+					"data": paste,
+				}
 			}
 		default:
 			value = map[string]string{

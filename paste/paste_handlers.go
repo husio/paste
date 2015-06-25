@@ -1,6 +1,7 @@
 package paste
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,8 +9,19 @@ import (
 )
 
 func handleHello(ctx *Context, w http.ResponseWriter, r *http.Request) {
-	user, _ := ctx.CurrentUser(r)
-	render(w, "paste_form", user)
+	context := make(map[string]interface{})
+
+	if userID, ok := ctx.CurrentUserID(r); ok {
+		context["Logged"] = ok
+		pasteIDs, err := ListBookmarkedPasteIDs(ctx.app.db, userID, time.Now(), 100)
+		if err != nil {
+			log.Printf("cannot get user %q bookmarks: %s", userID, err)
+		}
+		context["Bookmarked"] = pasteIDs
+		fmt.Printf("%#v", pasteIDs)
+	}
+
+	render(w, "paste_form", context)
 }
 
 func handleGetPaste(ctx *Context, w http.ResponseWriter, r *http.Request) {

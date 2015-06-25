@@ -7,7 +7,18 @@
         <link rel="stylesheet" href="/static/css/pure.css">
     </head>
     <body class="pure-g">
-        <form action="/" method="POST" class="pure-u-1-1 pure-form">
+		<div class="pure-u-1-4">
+			{{if .Logged}}
+				<ul>
+				{{range .Bookmarked}}
+					<li><a href="{{.}}">{{.}}</a></li>
+				{{end}}
+				</ul>
+			{{else}}
+				<a href="/login">Login</a>
+			{{end}}
+		</div>
+        <form action="/" method="POST" class="pure-u-3-4 pure-form">
             <textarea name="content" id="paste-content" placeholder="paste content" required class="pure-u-1-1"></textarea>
             <div class="pure-g" id="paste-options">
                 <div class="pure-u-3-4">
@@ -21,7 +32,6 @@
                         </select>
                     </label>
                 </div>
-				Hi {{.}}
                 <button type="submit" class="pure-button pure-button-primary pure-u-1-4">Submit</button>
             </div>
         </form>
